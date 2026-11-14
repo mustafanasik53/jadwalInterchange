@@ -63,9 +63,18 @@ create table timetable_entries (
   subject text,
   book text,
   teacher_id uuid references profiles(id),
+  -- Raw teacher identity from an imported Jadwal, kept until a real login
+  -- account exists to resolve teacher_id (source spreadsheets commonly have
+  -- no teacher email addresses at all).
+  teacher_name text,
+  teacher_phone text,
   entry_date date,
   created_at timestamptz not null default now(),
-  unique (week_number, class_id, day, period_slot_id)
+  -- teacher_id is part of the key (not just week/class/day/period) because a
+  -- slot can legitimately be co-taught by two teachers at once; Postgres
+  -- treats distinct NULLs as non-conflicting, so raw-imported rows (teacher_id
+  -- still null) never block each other here.
+  unique (week_number, class_id, day, period_slot_id, teacher_id)
 );
 
 create index idx_timetable_entries_teacher on timetable_entries(teacher_id, week_number);
