@@ -23,7 +23,7 @@ require_once __DIR__ . '/../src/SupabaseClient.php';
 
 function usage_and_exit(): void
 {
-    fwrite(STDERR, "Usage: php scripts/create_user.php <email> <password> \"<Full Name>\" <teacher|admin>\n");
+    fwrite(STDERR, "Usage: php scripts/create_user.php <email> <password> \"<Full Name>\" <teacher|admin> [its_id]\n");
     exit(1);
 }
 
@@ -36,6 +36,10 @@ $email = trim((string) $args[1]);
 $password = (string) $args[2];
 $fullName = trim((string) $args[3]);
 $role = strtolower(trim((string) $args[4]));
+$itsId = isset($args[5]) ? trim((string) $args[5]) : null;
+if ($itsId === '') {
+    $itsId = null;
+}
 
 if ($email === '' || $password === '' || $fullName === '') {
     usage_and_exit();
@@ -65,7 +69,18 @@ try {
         'email' => $email,
         'full_name' => $fullName,
         'role' => $role,
+        'its_id' => $itsId,
     ]);
+
+    if ($itsId !== null) {
+        $claimed = $client->patch('timetable_entries', [
+            'teacher_its_id' => 'eq.' . $itsId,
+            'teacher_id' => 'is.null',
+        ], [
+            'teacher_id' => $userId,
+        ]);
+        echo 'Linked ' . count($claimed) . " existing timetable row(s) for ITS ID {$itsId}.\n";
+    }
 
     echo "Done. {$email} can now log in as a {$role}.\n";
     exit(0);

@@ -26,8 +26,15 @@ create table profiles (
   email text not null unique,
   phone text,
   role user_role not null default 'teacher',
+  -- ITS ID (Dawoodi Bohra community member ID) — the shared key between this
+  -- table and timetable_entries.teacher_its_id. Source Jadwal spreadsheets
+  -- have no email addresses, only this ID, so it's how a login account gets
+  -- linked to its timetable rows (see "claim" logic in src/Auth.php).
+  its_id text,
   created_at timestamptz not null default now()
 );
+
+create unique index profiles_its_id_key on profiles(its_id) where its_id is not null;
 
 -- ---------------------------------------------------------------------------
 -- period_slots — master list of periods & their times, from Blank_Jadwal.pdf.
@@ -68,6 +75,7 @@ create table timetable_entries (
   -- no teacher email addresses at all).
   teacher_name text,
   teacher_phone text,
+  teacher_its_id text,
   entry_date date,
   created_at timestamptz not null default now(),
   -- teacher_id is part of the key (not just week/class/day/period) because a
@@ -78,6 +86,7 @@ create table timetable_entries (
 );
 
 create index idx_timetable_entries_teacher on timetable_entries(teacher_id, week_number);
+create index idx_timetable_entries_teacher_its_id on timetable_entries(teacher_its_id);
 
 -- ---------------------------------------------------------------------------
 -- release_requests — a teacher asking to give up one of their periods

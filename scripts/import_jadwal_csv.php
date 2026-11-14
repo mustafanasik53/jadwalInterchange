@@ -55,9 +55,9 @@ $insertClass = $pdo->prepare('insert into classes (name) values (:name) returnin
 
 $insertEntry = $pdo->prepare('
     insert into timetable_entries
-        (week_number, class_id, day, period_slot_id, subject, book, teacher_name, teacher_phone, teacher_id, entry_date)
+        (week_number, class_id, day, period_slot_id, subject, book, teacher_name, teacher_phone, teacher_its_id, teacher_id, entry_date)
     values
-        (:week_number, :class_id, :day, :period_slot_id, :subject, :book, :teacher_name, :teacher_phone, null, :entry_date)
+        (:week_number, :class_id, :day, :period_slot_id, :subject, :book, :teacher_name, :teacher_phone, :teacher_its_id, null, :entry_date)
 ');
 
 $dayMap = [
@@ -132,7 +132,11 @@ try {
             $classes[$className] = (int) $insertClass->fetchColumn();
         }
 
-        $teacherName = preg_replace('/^\d+\s*/', '', $teacherRaw);
+        $teacherItsId = null;
+        if (preg_match('/^(\d+)\s*/', $teacherRaw, $m)) {
+            $teacherItsId = $m[1];
+        }
+        $teacherName = trim(preg_replace('/^\d+\s*/', '', $teacherRaw));
         $teacherName = $teacherName !== '' ? $teacherName : null;
 
         $insertEntry->execute([
@@ -144,6 +148,7 @@ try {
             'book' => $book !== '' ? $book : null,
             'teacher_name' => $teacherName,
             'teacher_phone' => $phone !== '' ? $phone : null,
+            'teacher_its_id' => $teacherItsId,
             'entry_date' => $date->format('Y-m-d'),
         ]);
         $imported++;

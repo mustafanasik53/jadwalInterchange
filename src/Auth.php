@@ -118,7 +118,40 @@ function login_with_password(SupabaseClient $client, string $email, string $pass
     $_SESSION['full_name'] = (string) $profile['full_name'];
     $_SESSION['role'] = (string) $profile['role'];
 
+    claim_timetable_entries_by_its_id($client, $profile);
+
     return current_user();
+}
+
+/**
+ * The source Jadwal has no teacher emails, only an ITS ID embedded in each
+ * row (timetable_entries.teacher_its_id). The first time a teacher with a
+ * matching profiles.its_id logs in, "claim" every one of their raw-imported
+ * rows that isn't linked to a real account yet by setting teacher_id — after
+ * that one-time link, the rest of the app (which filters everything by
+ * teacher_id) just works. Safe/cheap to call on every login: once a row is
+ * claimed, the `teacher_id is null` filter excludes it from then on.
+ *
+ * @param array<string,mixed> $profile
+ */
+function claim_timetable_entries_by_its_id(SupabaseClient $client, array $profile): void
+{
+    $itsId = $profile['its_id'] ?? null;
+    if ($itsId === null || $itsId === '') {
+        return;
+    }
+
+    try {
+        $client->patch('timetable_entries', [
+            'teacher_its_id' => 'eq.' . (string) $itsId,
+            'teacher_id' => 'is.null',
+        ], [
+            'teacher_id' => (string) $profile['id'],
+        ]);
+    } catch (SupabaseException $e) {
+        // Non-fatal: worst case the teacher's periods stay unclaimed until
+        // the next login attempt. Never block sign-in over this.
+    }
 }
 
 function logout(): void
